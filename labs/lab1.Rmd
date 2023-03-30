@@ -1,0 +1,210 @@
+---
+title: "Fish 458 Lab 1"
+author: "M.Kinneen"
+date: "2023-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(testthat)
+```
+
+## Exercise 1
+
+Funciton whcih calculate weight based on length, a and b.
+```{r length-weight}
+
+LengthWeight <- function(L,a,b){
+  W = a*L^b
+  return(W)
+  
+  
+  }
+
+
+# Test function
+library(testthat)
+
+expect_equal(round(LengthWeight(L = 30, a = 0.0002 , b = 3.05),6), 6.401029)
+
+#Test passes
+# Needed to fix output digits to pass
+
+
+```
+
+##Von Bertalanffy growth 
+
+You can also embed plots, for example:
+
+```{r vb}
+VonBert <- function(age,k,Linfinity,t0){
+  
+  L <- Linfinity*(1- exp(-k*(age-t0))) #calculate L based on VB eq
+  return(L)  #return Length
+  
+}
+
+VonBert(age  = 5, k = 0.2, Linfinity = 80, t0 = -0.2)
+
+
+#Test function
+expect_equal(round(VonBert(age  = 5, k = 0.2, Linfinity = 80, t0 = -0.2)
+,2),51.72 )
+
+#Test passses
+```
+
+## Looping over age, printing age squared
+
+```{r loop-over-agesq}
+
+AgeSquare <- function(ages){
+  
+  nages <- length(ages) #check length
+  squaredages <- vector(length = nages) #Create vector of correct length
+  
+  
+  for(i in 1:nages){ #create loop
+    squaredages[i] <- ages[i]^2 #stoare ith age squared
+  }
+  
+  return(squaredages)
+  
+}
+
+#test function
+expect_equal(AgeSquare(ages=1:10),c(1:10)^2) #check values
+
+expect_length(AgeSquare(ages=1:10),10) # check length
+
+```
+
+
+
+## Looping over age, printing length
+
+```{r loop-over-age_l}
+
+AgeLengths <- function(ages,k,Linfinity,t0){
+  
+  nages<- length(ages)
+  lengthanswer <- vector(length = nages) #check length
+
+  
+  for(i in 1:nages){ #create loop
+    lengthanswer[i] <- VonBert(age = ages[i],k = k,Linfinity = Linfinity, t0 = t0) #stoare ith age squared
+  }
+  
+  return(lengthanswer)
+  
+}
+
+AgeLengths(ages=1:10, k=0.2, Linfinity=80, t0=-0.2)
+
+
+#test function
+#Expected output
+# [1] 17.06977 28.47709 37.81661 45.46316 51.72363 56.84926 61.04578 64.48160
+# 67.29461 69.59770
+AgeLengths(ages=1:10, k=0.2, Linfinity=80, t0=-0.2)
+
+```
+### Exercise 5  Looping over age, length, weight
+
+```{r looping-a-l-w}
+
+AgeValues <- function(age.vec,k,Linfinity,t0, a, b){
+  
+  nages <- length(age.vec)
+  lengths <- vector(length = nages) #create output vec for length
+  weights <- vector(length = nages) #create output vec for weight
+  
+  for(i in 1:nages){
+    lengths[i] <- VonBert(age = age.vec[i],k = k, Linfinity = Linfinity,t0=t0)
+    weights[i] <- LengthWeight(L = lengths[i], a = a, b = b)
+  } #loop over ages calculating L and W 
+
+
+  
+  return(list(lengths=lengths, weights=weights)) # return values
+  
+  
+  }
+
+AgeValues(age.vec=0:5, a=0.0002, b=3.05, k=0.2, Linfinity=80, t0=-0.2)
+
+#Expected output
+# > AgeValues(age.vec=0:5, a=0.0002, b=3.05, k=0.2, Linfinity=80, t0=-0.2)
+# $lengths
+# [1] 3.136845 17.069771 28.477086 37.816606 45.463158 51.723625
+# $weights
+# [1] 0.006536327 1.146369107 5.460613369 12.970650946 22.745305722 33.711751572
+
+```
+
+## Calculating bevertoin-Holt Steepness
+
+```{r bh-steep}
+
+BevHolt <- function(h,R0,S0){
+  
+  Svec <- vector(length = 100)
+  Rvec <- vector(length = 100)
+  
+  alpha <- ((1-h)/(4*h*R0))*S0
+  beta <- (5*h-1)/(4*h*R0)
+  
+  Svec <- seq(from = 0, to = S0, length.out = 100)
+  
+  for(i in 1:length(Svec)){
+    Rvec[i] <- Svec[i]/(alpha + beta*Svec[i])
+  }
+
+  return(list(Rvec=Rvec, Svec=Svec))
+}
+
+BevHolt(h=0.9,R0=1,S0=1)
+
+x<-BevHolt(h=0.9,R0=1,S0=1)$Svec
+y1<- BevHolt(h=0.9,R0=1,S0=1)$Rvec
+y2<- BevHolt(h=0.5,R0=1,S0=1)$Rvec
+
+plot(x=x, y=y1, type="l", xaxs="i", yaxs="i",col="red",xlab = "Biomass",ylab="Recruitment")
+lines(x=x,y=y2,col="green")
+legend('bottomright',inset=0.05,c("0.9","0.5"),lty=1,col=c("red","green"),title="h value")
+abline(v = 0.2,lty=2,col="darkgrey")
+abline(h = c(0.5,0.9),lty=2,col="darkgrey")
+
+
+
+```
+
+
+
+## Logistic selectivity
+
+```{r log-s}
+
+LogSel <- function(Lvec,L50,L95){ #define function
+  
+  s <- vector(length = length(Lvec)) #create output vec == input
+  
+  
+  s<- 1/(1 + exp(-log(19)*((Lvec-L50)/(L95-L50))))#calculate selectvity
+  
+  return(s)
+  
+}
+
+
+testthat::expect_equal(LogSel(55,40,60), 0.900995) #Test with single value
+
+
+#test with a vector
+test_vec <- seq(40,60,3)
+LogSel(Lvec = test_vec, L50 = 40, L95 = 60)
+```
+
+
